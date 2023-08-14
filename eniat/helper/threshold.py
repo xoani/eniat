@@ -1,5 +1,7 @@
 from .io import *
 import numpy as np
+from scipy.stats import norm
+
 
 def thr_by_z(nib_obj, pval, twosided=False):
     data, affine, resol = decomp_dataobj(nib_obj)

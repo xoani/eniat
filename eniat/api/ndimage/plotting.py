@@ -1,3 +1,7 @@
+from ...helper import *
+import matplotlib.pyplot as plt
+
+
 def get_outline(data, thr=0.999):
     from skimage import filters
     data = np.nan_to_num(data.copy())
@@ -15,7 +19,7 @@ def get_maxproj(niiobj, sigma=False, biside=False):
     sigma: smoothness
     biside: True if data contains negative value
     """
-    data, affine, resol = decomp_dataobj(niiobj)
+    data = decomp_dataobj(niiobj)[0]
     
     # prepare coordinate system
     x, y, z = get_meshgrid(niiobj)
@@ -100,7 +104,6 @@ def orthoview_maxproj(anat_obj, sigma=False, **kwargs):
     return fig
 
 def orthoview_maxproj_overlay(func_obj, fig, **kwargs):
-    data, affine, resol = decomp_dataobj(func_obj)
     mpovj = get_maxproj(func_obj, sigma=False, biside=True)
     
     # prepare figure
@@ -136,12 +139,12 @@ def orthoview_slice(anat_obj, func_obj, coord, **kwargs):
     fig = orthoview_maxproj(anat_obj, cmap='gray', sigma=2, figsize=figsize, dpi=dpi,
                             alpha=0.5, vmin=-50000, vmax=50000)
     
-    anat_data, anat_affine, anat_resol = decomp_dataobj(anat_obj)
+    anat_affine = decomp_dataobj(anat_obj)[1]
     anat_coord = mm_to_voxel(coord, anat_affine)
     anat_slice_obj = get_slice(anat_obj, anat_coord)
    
     if func_obj is not None:
-        func_data, func_affine, func_resol = decomp_dataobj(func_obj)
+        func_affine = decomp_dataobj(func_obj)[1]
         func_coord = mm_to_voxel(coord, func_affine)
         func_slice_obj = get_slice(func_obj, func_coord)
         func_set = [None, func_slice_obj['axial'], func_slice_obj['coronal'], func_slice_obj['sagittal']]
@@ -301,4 +304,6 @@ def mosaicview_paxinos(anat_obj, func_obj, coord, navi=True, annotate=True,
                 ax.text((xmin + xmax)/2, ymin - 2, f'{coord[i]:.2f} mm', 
                         horizontalalignment='center',
                         verticalalignment='bottom',
+                        fontsize=fontsize)
+    return fig
                    
