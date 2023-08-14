@@ -25,3 +25,39 @@ def tsnr(data: np.ndarray, io_handler=sys.stdout) -> Union[np.ndarray, int]:
         tsnr[np.nonzero(std)] = masked_mean / masked_std
     io_handler.write('[Done]\n')
     return tsnr
+
+
+def dvars(data, io_handler=sys.stdout):
+    io_handler.write('Calculating DVARS...')
+    mask_idx = np.nonzero(data.mean(-1))
+    diff_img = np.diff(data[mask_idx], axis=-1)
+    dvars_ = np.sqrt(np.square(diff_img).mean(0))
+    io_handler.write('[Done]\n')
+    return np.insert(dvars_, 0, 0)
+
+
+def bold_mean_std(data, io_handler=sys.stdout):
+    io_handler.write('Calculating Mean and STD...')
+    mask_idx = np.nonzero(data.mean(-1))
+    masked_data = data[mask_idx]
+    masked_data = (masked_data.T - masked_data.mean(1).T).T
+    io_handler.write('[Done]\n')
+    return masked_data.mean(0), masked_data.std(0)
+
+
+def framewise_displacements(volreg, io_handler=sys.stdout):
+    """
+    Calculate volume displacement from motion parameter
+    """
+    import pandas as pd
+    output = dict()
+    columns = volreg.columns
+    # Framewise displacement
+    io_handler.write('Calculating Displacement from motion parameters...')
+    output['FD'] = np.abs(np.insert(np.diff(volreg, axis=0), 0, 0, axis=0)).sum(axis=1)
+    # Absolute rotational displacement
+    output['ARD'] = np.abs(np.insert(np.diff(volreg[columns[:3]], axis=0), 0, 0, axis=0)).sum(axis=1)
+    # Absolute translational displacement
+    output['ATD'] = np.abs(np.insert(np.diff(volreg[columns[3:]], axis=0), 0, 0, axis=0)).sum(axis=1)
+    io_handler.write('[Done]\n')
+    return pd.DataFrame(output)
