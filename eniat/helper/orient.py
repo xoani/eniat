@@ -1,5 +1,5 @@
 import numpy as np
-from .io import decomp_dataobj, save_to_nib
+from ..api.ndimage.io import decomp_dataobj, save_to_nib
 from scipy.ndimage import affine_transform
 
 
@@ -71,7 +71,6 @@ def norm_orient(nib_img):
     Returns:
         nib.NifTi1Image obj
     """
-    from scipy.ndimage import affine_transform
     data, affine, resol = decomp_dataobj(nib_img)
 
     np.set_printoptions(precision=4, suppress=True)
@@ -102,97 +101,59 @@ def norm_orient(nib_img):
     return save_to_nib(ras_data, ras_affine)
 
 
-def pad_by_voxel(nib_img, a=None, p=None, l=None, r=None, i=None, s=None):
-    """
-    a: anterior
-    p: posterior
-    l: left
-    r: right
-    s: superior
-    i: inferior
-    """
-    options = dict(a=a, p=p, l=l, r=r, i=i, s=s)
-    data, affine, resol = decomp_dataobj(nib_img)
-    x, y, z = data.shape
-    for k, o in options.items():
-        if o is None:
-            pass
-        else:
-            if k == 'a':
-                affine[1, 3] += resol[1] * o
-                pad = np.zeros([x, o, z])
-                data = np.concatenate([pad, data], axis=1)
-                x, y, z = data.shape
-            if k == 'p':
-                pad = np.zeros([x, o, z])
-                data = np.concatenate([data, pad], axis=1)
-                x, y, z = data.shape
-            if k == 'l':
-                affine[0, 3] += resol[0] * o
-                pad = np.zeros([o, y, z])
-                data = np.concatenate([pad, data], axis=0)
-                x, y, z = data.shape
-            if k == 'r':
-                pad = np.zeros([o, y, z])
-                data = np.concatenate([data, pad], axis=0)
-                x, y, z = data.shape
-            if k == 'i':
-                affine[2, 3] -= resol[2] * o
-                pad = np.zeros([x, y, o])
-                data = np.concatenate([pad, data], axis=2)
-                x, y, z = data.shape
-            if k == 's':
-                pad = np.zeros([x, y, o])
-                data = np.concatenate([data, pad], axis=2)
-                x, y, z = data.shape
+def get_coord_center_of_mass(func_obj):
+    """ Return center of mass coordinate on Paxinos system """
+    from scipy import ndimage
+    
+    mask = np.array(func_obj.dataobj).astype(bool)
+    mask_com = ndimage.measurements.center_of_mass(mask)
+    affine = func_obj.affine.copy()
+    com_coord = affine[:3, :3].dot(mask_com) + affine[:3, 3]
+    return com_coord * np.array([1, 1, -1]) - np.array([0, 0.36, -7])
+
+
+def get_slice(niiobj, coord):
+    data, affine, resol = decomp_dataobj(niiobj)
+    data = np.round(data, decimals=10)
+    
+    # prepare coordinate system
+    x, y, z = get_meshgrid(niiobj)
+    
+    axi_img = data[:, :, coord[2]].astype(float)
+    cor_img = data[:, coord[1], :].T.astype(float)
+    sag_img = data[coord[0], :, :].T.astype(float)
+    
+    axi_img[axi_img == 0] = np.nan
+    cor_img[cor_img == 0] = np.nan
+    sag_img[sag_img == 0] = np.nan
+    
+    return dict(axial=(y, x, axi_img),
+                coronal=(x, z, cor_img),
+                sagittal=(y, z, sag_img))
+
+
+def get_meshgrid(niiobj):
+    data, affine, resol = decomp_dataobj(niiobj)
+    size = data.shape
+    x0, y0, z0 = affine[:3, :3].dot(np.array([0, 0, 0])) + affine[:3, 3]
+    x1, y1, z1 = affine[:3, :3].dot(np.array(size[:3])) + affine[:3, 3]
+    
+    x = np.linspace(x0, x1, size[0])
+    y = np.linspace(y0, y1, size[1])
+    z = np.linspace(z0, z1, size[2])
+    return x, y, z
+
+
+def paxinose_to_camri(x, y, z):
+    return np.array([x, y, z]) * np.array([1, 1, -1]) + np.array([0, 0.36, 7])
+
+def correct_affine(nib_obj):
+    # method to correct affine
+    # temporary method for v2-1 template
+    data, affine, _ = decomp_dataobj(nib_obj)
+    affine[0, 3] -= 0.2
     return save_to_nib(data, affine)
 
-
-def crop_by_voxel(nib_img, a=None, p=None, l=None, r=None, i=None, s=None):
-    """
-    a: anterior
-    p: posterior
-    l: left
-    r: right
-    s: superior
-    i: inferior
-    """
-    options = dict(a=a, p=p, l=l, r=r, i=i, s=s)
-    data, affine, resol = decomp_dataobj(nib_img)
-    x, y, z = data.shape
-    for k, o in options.items():
-        if o is None:
-            pass
-        else:
-            if k == 'a':
-                affine[1, 3] += resol[1] * o
-                data = data[:, o:, :]
-                x, y, z = data.shape
-            if k == 'p':
-                data = data[:, :(y - o), :]
-                x, y, z = data.shape
-            if k == 'l':
-                affine[0, 3] += resol[0] * o
-                data = data[o:, :, :]
-                x, y, z = data.shape
-            if k == 'r':
-                data = data[:(x - o), :, :]
-                x, y, z = data.shape
-            if k == 'i':
-                affine[2, 3] += resol[2] * o
-                data = data[:, :, o:]
-                x, y, z = data.shape
-            if k == 's':
-                data = data[:, :, :(z - o)]
-                x, y, z = data.shape
-    return save_to_nib(data, affine)
-
-
-def concat_3d_to_4d(*nib_objs):
-    concat_data = []
-    affine = None
-    for nii in nib_objs:
-        data, affine, _ = decomp_dataobj(nii)
-        concat_data.append(data[..., np.newaxis])
-    concat_data = np.concatenate(concat_data, axis=-1)
-    return save_to_nib(concat_data, affine)
+def mm_to_voxel(coord, affine):
+    new_coord = np.linalg.inv(affine[:3, :3]).dot(np.array(coord)-affine[:3, 3])
+    return np.round(new_coord, decimals=0).astype(int)

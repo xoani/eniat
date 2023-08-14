@@ -1,3 +1,4 @@
+import math
 import numpy as np
 
 
@@ -15,7 +16,6 @@ def rat_hrf(t, b=2.0, p1=7.4, p2=8.9, v=1.5):
     Returns:
         rat hemodynamic response function
     """
-    import math
     peak = (b**p1)/math.gamma(p1)*t**(p1-1)
     under = (b**p2)/(v*math.gamma(p2))*t**(p2-1)
     hrf = np.e**(-1 * b * t) * (peak - under)

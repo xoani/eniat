@@ -110,3 +110,111 @@ def sigma2fwhm(sigma: float) -> float:
     - float: The Full Width at Half Maximum (FWHM) corresponding to the provided sigma.
     """
     return sigma * np.sqrt(8 * np.log(2))
+
+
+def pad_by_voxel(nib_img, a=None, p=None, l=None, r=None, i=None, s=None):
+    """
+    a: anterior
+    p: posterior
+    l: left
+    r: right
+    s: superior
+    i: inferior
+    """
+    options = dict(a=a, p=p, l=l, r=r, i=i, s=s)
+    data, affine, resol = decomp_dataobj(nib_img)
+    x, y, z = data.shape
+    for k, o in options.items():
+        if o is None:
+            pass
+        else:
+            if k == 'a':
+                affine[1, 3] += resol[1] * o
+                pad = np.zeros([x, o, z])
+                data = np.concatenate([pad, data], axis=1)
+                x, y, z = data.shape
+            if k == 'p':
+                pad = np.zeros([x, o, z])
+                data = np.concatenate([data, pad], axis=1)
+                x, y, z = data.shape
+            if k == 'l':
+                affine[0, 3] += resol[0] * o
+                pad = np.zeros([o, y, z])
+                data = np.concatenate([pad, data], axis=0)
+                x, y, z = data.shape
+            if k == 'r':
+                pad = np.zeros([o, y, z])
+                data = np.concatenate([data, pad], axis=0)
+                x, y, z = data.shape
+            if k == 'i':
+                affine[2, 3] -= resol[2] * o
+                pad = np.zeros([x, y, o])
+                data = np.concatenate([pad, data], axis=2)
+                x, y, z = data.shape
+            if k == 's':
+                pad = np.zeros([x, y, o])
+                data = np.concatenate([data, pad], axis=2)
+                x, y, z = data.shape
+    return save_to_nib(data, affine)
+
+
+def crop_by_voxel(nib_img, a=None, p=None, l=None, r=None, i=None, s=None):
+    """
+    a: anterior
+    p: posterior
+    l: left
+    r: right
+    s: superior
+    i: inferior
+    """
+    options = dict(a=a, p=p, l=l, r=r, i=i, s=s)
+    data, affine, resol = decomp_dataobj(nib_img)
+    x, y, z = data.shape
+    for k, o in options.items():
+        if o is None:
+            pass
+        else:
+            if k == 'a':
+                affine[1, 3] += resol[1] * o
+                data = data[:, o:, :]
+                x, y, z = data.shape
+            if k == 'p':
+                data = data[:, :(y-o), :]
+                x, y, z = data.shape
+            if k == 'l':
+                affine[0, 3] += resol[0] * o
+                data = data[o:, :, :]
+                x, y, z = data.shape
+            if k == 'r':
+                data = data[:(x-o), :, :]
+                x, y, z = data.shape
+            if k == 'i':
+                affine[2, 3] += resol[2] * o
+                data = data[:, :, o:]
+                x, y, z = data.shape
+            if k == 's':
+                pdata = data[:, :, :(z-o)]
+                x, y, z = data.shape
+    return save_to_nib(data, affine)
+
+
+def extend_dim(data, num_elements):
+    return list(list(data.shape) + [num_elements])
+
+def concat_3d_to_4d(*nib_objs):
+    concat_data = []
+    affine = None
+    for nii in nib_objs:
+        data, affine, _ = decomp_dataobj(nii)
+        concat_data.append(data[..., np.newaxis])
+    concat_data = np.concatenate(concat_data, axis=-1)
+    return save_to_nib(concat_data, affine)
+
+
+def blur(data, sigma):
+    from scipy.ndimage import gaussian_filter
+    
+    data_mask = (data == 0)
+    data = gaussian_filter(data, sigma).astype(float)
+    data[data_mask] = np.nan
+    return data
