@@ -119,8 +119,12 @@ def nuisance_regression(nib_img, mask: Optional[nib.Nifti1Image] = None,
 
 
     if io_handler is None:
-        from sys import stdout
-        io_handler = stdout
+        if verbose:
+            from sys import stdout
+            io_handler = stdout
+        else:
+            from ...helper import SilentIO
+            io_handler = SilentIO()
     data, affine, resol = decomp_dataobj(nib_img)
     if mask is None:
         mask_idx = np.nonzero(data.std(-1))
