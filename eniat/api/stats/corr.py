@@ -54,7 +54,7 @@ def corr_with(x: np.ndarray, y: np.ndarray) -> float:
     return r
 
 
-def phase_locking_value(x: np.ndaray, y: np.ndarray) -> Tuple[float, np.ndarray]:
+def phase_locking_value(x: np.ndarray, y: np.ndarray) -> Tuple[float, np.ndarray]:
     """
     Compute the phase-locking value (PLV) between two 1D arrays.
     
