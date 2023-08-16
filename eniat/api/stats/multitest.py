@@ -1,5 +1,5 @@
 import numpy as np
-from .corr import r_to_t
+from ...helper import r_to_t
 
 def bonfferoni_correction(r: np.ndarray, size: int, pval: float = 0.05) -> np.ndarray:
     """
