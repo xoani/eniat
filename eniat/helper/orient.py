@@ -1,5 +1,5 @@
 import numpy as np
-from ..api.ndimage.io import decomp_dataobj, save_to_nib
+from .io import decomp_dataobj, save_to_nib
 from scipy.ndimage import affine_transform
 
 
