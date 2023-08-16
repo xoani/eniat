@@ -1,5 +1,6 @@
 import numpy as np
-
+from typing import Union, Optional, IO
+import nibabel as nib
 
 class DualReg:
     """
@@ -100,3 +101,52 @@ class DualReg:
             np.ndarray (1D)
         """
         return np.square(self._data - self.predicted).sum(0)
+    
+
+def nuisance_regression(nib_img, mask: Optional[nib.Nifti1Image] = None,
+                        port: int =1,
+                        ort: Optional[np.ndarray] = None,
+                        dt: Union[int, float] = 1.0,
+                        lowcut: Optional[float] = 0.01,
+                        highcut: Optional[float] = 0.1,
+                        fwhm: Optional[float] = None,
+                        verbose: bool = True,
+                        io_handler: Optional[IO] = None):
+    from ...helper import decomp_dataobj, save_to_nib, sitk2nib, nib2sitk
+    from ..regression import polynomial_feature, linear_regression
+    from ..signal import bandpass
+    from ..ndimage import gaussian_smoothing
+
+
+    if io_handler is None:
+        from sys import stdout
+        io_handler = stdout
+    data, affine, resol = decomp_dataobj(nib_img)
+    if mask is None:
+        mask_idx = np.nonzero(data.std(-1))
+    else:
+        mask_idx = np.nonzero(mask.dataobj)
+    data_masked = data[mask_idx]
+
+    # detrend data
+    model = polynomial_feature(data_masked, order=port)
+    model /= model.max(axis=0, initial=None)
+    if ort is not None:
+        ort -= ort.mean(0)
+        ort /= abs(ort).max(0)
+        model = np.concatenate([model, ort], axis=-1)
+    fit_masked = linear_regression(data_masked, model=model)
+    data_masked -= fit_masked.sum(-1)
+
+    # bandpass filter
+    data_masked = bandpass(data_masked, dt=dt, lowcut=lowcut, highcut=highcut)
+    data_masked += fit_masked[..., 0]
+    data[mask_idx] = data_masked
+    filtered_nii = save_to_nib(data, affine)
+
+    # gaussian smoothing
+    if fwhm is not None:
+        sitk_img, header = nib2sitk(filtered_nii)
+        filtered_sitk_img = gaussian_smoothing(sitk_img, fwhm, io_handler=io_handler)
+        filtered_nii = sitk2nib(filtered_sitk_img, header)
+    return filtered_nii
