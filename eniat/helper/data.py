@@ -31,3 +31,8 @@ def iszero(data: np.ndarray, axis: int=0) -> Union[bool, np.ndarray]:
     [True, False, True]
     """
     return np.all(data == 0, axis=axis)
+
+
+
+def extend_dim(data, num_elements):
+    return list(list(data.shape) + [num_elements])

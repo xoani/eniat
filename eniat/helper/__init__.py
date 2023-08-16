@@ -8,6 +8,7 @@ from .stats import *
 from .matrix import *
 from .threshold import *
 from .signal import *
+from .sitk import *
 
 
 __all__ = module_parser(globals())

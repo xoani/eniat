@@ -1,5 +1,6 @@
 import numpy as np
 from typing import Tuple
+from .io import decomp_dataobj, save_to_nib
 
 
 def random_rgb() -> Tuple[int, int, int]:
@@ -197,9 +198,6 @@ def crop_by_voxel(nib_img, a=None, p=None, l=None, r=None, i=None, s=None):
                 x, y, z = data.shape
     return save_to_nib(data, affine)
 
-
-def extend_dim(data, num_elements):
-    return list(list(data.shape) + [num_elements])
 
 def concat_3d_to_4d(*nib_objs):
     concat_data = []
