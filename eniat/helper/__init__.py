@@ -9,6 +9,8 @@ from .matrix import *
 from .threshold import *
 from .signal import *
 from .sitk import *
+from .afni import *
+from .time import *
 
 
 __all__ = module_parser(globals())
