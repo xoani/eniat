@@ -1,9 +1,9 @@
 import numpy as np
 from ..regression import linear_regression
+from scipy import stats
 
 
 def ttest(data, model):
-    from scipy import stats
     predicted, coef = linear_regression(data, model, method='svd', return_beta=True)
 
     dof = model.shape[0] - model.shape[1]
@@ -19,6 +19,39 @@ def ttest(data, model):
     p = 2 * (1 - stats.t.cdf(abs(t), df=dof))
     return coef, t, p
 
+def glt(model, contrast, permute=False):
+    """
+    Performs a general linear test (GLT) using a contrast matrix.
+
+    Args:
+        model: The fitted model object.
+        contrast: The contrast matrix.
+        permute: Whether to perform permutation testing (default: False).
+
+    Returns:
+        If permute is True:
+            tvals: The t-values.
+        If permute is False:
+            tvals: The t-values.
+            pvals: The p-values.
+    """
+    cols = model.column_names
+    c = np.zeros(len(cols))
+    c[:len(contrast)] = contrast 
+    X = model._dmat
+    covar = np.linalg.inv(X.T.dot(X))
+    
+    ss_err = model._data['SSerr']
+    df = model._attrs['DFerr']
+    mse = ss_err / df
+
+    beta = model._data['beta'].dot(c)
+    se = np.sqrt(c.dot(covar).dot(c.T) * mse)
+    tvals = beta / se
+    if permute:
+        return tvals
+    pvals = 2 * stats.t.sf(abs(tvals), df=df)
+    return tvals, pvals
 
 def onesample_ttest_perm(data, pval=0.05, nperm=5000, twosided=False):
     from tqdm.notebook import tqdm
