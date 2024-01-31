@@ -11,6 +11,7 @@ from .signal import *
 from .sitk import *
 from .afni import *
 from .time import *
+from .path import *
 
 
 __all__ = module_parser(globals())
